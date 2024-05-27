@@ -41,6 +41,7 @@ def generate_topics_by_openai(feedback: str) -> json:
     content = response.choices[0].message.content
     return content
 
+
 csv = pd.read_csv(input_path)
 csv['company'] = (
     csv['custom_id'].apply(lambda x: x.split('_')[1]).apply(lambda x: x.split('-')[-1])
@@ -48,13 +49,14 @@ csv['company'] = (
 csv['session'] = (
     csv['custom_id'].apply(lambda x: x.split('_')[2]).apply(lambda x: x.split('-')[-1])
 )
+
 csv['question'] = (
     csv['custom_id'].apply(lambda x: x.split('_')[3]).apply(lambda x: x.split('-')[-1])
 )
 csv['custom_id'] = csv['custom_id'].apply(lambda x: x.split('_')[0])
 # Get the unique cluster numbers
 clusters = csv['cluster_num'].unique()
-prepared_dataset = pd.DataFrame(columns=[ 'text','topics'])
+prepared_dataset = pd.DataFrame(columns=['text', 'topics'])
 
 for cluster in clusters:
     # target sampling size
@@ -66,8 +68,13 @@ for cluster in clusters:
     cluster_data = cluster_data.sample(frac=1).reset_index(drop=True)
 
     for _, row in cluster_data.iterrows():
-        answer_df = csv[(csv['question'] == row['question']) & (csv['session'] == row['session'])].sort_values('custom_id')
-        answer_text = ''.join(answer_df['text'])
+        answer_df = csv[
+            (csv['question'] == row['question']) & (csv['session'] == row['session'])
+        ].sort_values('custom_id')
+        answer_text = ' '.join(
+            ['Question: ' + answer_df['text'].iloc[0]]
+            + ['Answer: ' + text for text in answer_df['text'].iloc[1:]]
+        )
 
         # check add answer_text if answer not in prepared_dataset
         if answer_text not in prepared_dataset['text'].values:
@@ -80,4 +87,4 @@ for cluster in clusters:
         if current_size >= target_size:
             break
 
-print(prepared_dataset)
+prepared_dataset.to_csv(output_path, index=False)
